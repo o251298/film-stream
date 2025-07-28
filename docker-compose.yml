@@ -1,0 +1,83 @@
+version: '3.8'
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  nginx-loadbalancer:
+    build:
+      context: ./nginx
+    container_name: nginx-loadbalancer
+    ports:
+      - "80:80"
+    networks:
+      app_net:
+        ipv4_address: 172.20.0.2
+    depends_on:
+      - app1
+      - app2
+  app1:
+    build:
+      context: ./backend
+    container_name: app1
+    networks:
+      app_net:
+        ipv4_address: 172.20.0.3
+    env_file: .env
+    volumes:
+      - ./backend:/var/www/
+  app2:
+    build:
+      context: ./backend
+    container_name: app2
+    networks:
+      app_net:
+        ipv4_address: 172.20.0.4
+    env_file: .env
+    volumes:
+      - ./backend:/var/www/
+#  frontend:
+#    build:
+#      context: ./frontend
+#    container_name: vue-frontend
+#    ports:
+#      - "3000:80"
+#    networks:
+#      app_net:
+#        ipv4_address: 172.20.0.5
+  mysql-master:
+    image: mysql:8
+    container_name: mysql-master
+    environment:
+      MYSQL_ROOT_PASSWORD: 3a6fcea0-9b56-484e-987d-f5f033cef77c
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: oleh
+      MYSQL_PASSWORD: 3a6fcea0-9b56-484e-987d-f5f033cefddd
+    volumes:
+      - master_data:/var/lib/mysql
+      - ./mysql-master/conf.d/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      app_net:
+        ipv4_address: 172.20.0.6
+
+  mysql-slave:
+    image: mysql:8
+    container_name: mysql-slave
+    environment:
+      MYSQL_ROOT_PASSWORD: 3a6fcea0-9b56-484e-987d-f5f033cef77c
+    depends_on:
+      - mysql-master
+    volumes:
+      - slave_data:/var/lib/mysql
+      - ./mysql-slave/conf.d/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      app_net:
+        ipv4_address: 172.20.0.7
+
+volumes:
+  master_data:
+  slave_data:
